@@ -70,13 +70,16 @@ export const ServicesPage: React.FC = () => {
   const categories = [
     { value: 'ALL', label: 'All Categories' },
     { value: ServiceCategory.PLUMBING, label: 'Plumbing' },
-    { value: ServiceCategory.ELECTRICAL, label: 'Electrical' },
+    { value: ServiceCategory.ELECTRICITY, label: 'Electricity' },
     { value: ServiceCategory.CARPENTRY, label: 'Carpentry' },
     { value: ServiceCategory.PAINTING, label: 'Painting' },
     { value: ServiceCategory.CLEANING, label: 'Cleaning' },
-    { value: ServiceCategory.GARDENING, label: 'Gardening' },
+    { value: ServiceCategory.GENERAL_MAINTENANCE, label: 'General Maintenance' },
     { value: ServiceCategory.HVAC, label: 'HVAC' },
     { value: ServiceCategory.APPLIANCE_REPAIR, label: 'Appliance Repair' },
+    { value: ServiceCategory.IT_SUPPORT, label: 'IT Support' },
+    { value: ServiceCategory.LOCKSMITH, label: 'Locksmith' },
+    { value: ServiceCategory.OTHER, label: 'Other' },
   ];
 
   if (loading) {
