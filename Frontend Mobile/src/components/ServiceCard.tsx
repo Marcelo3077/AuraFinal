@@ -1,23 +1,41 @@
 import React from 'react';
-import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Colors } from '@/constants/Colors';
 import { Service } from '@/types';
 
 interface ServiceCardProps {
     service: Service;
     onSelect?: (service: Service) => void;
+    loading?: boolean;
 }
 
-export const ServiceCard: React.FC<ServiceCardProps> = ({ service, onSelect }) => (
-    <TouchableOpacity style={styles.card} activeOpacity={0.9} onPress={() => onSelect?.(service)}>
+export const ServiceCard: React.FC<ServiceCardProps> = ({ service, onSelect, loading }) => (
+    <TouchableOpacity 
+        style={[styles.card, loading && styles.cardLoading]} 
+        activeOpacity={0.9} 
+        onPress={() => !loading && onSelect?.(service)}
+        disabled={loading}
+    >
         <View style={styles.header}>
             <Text style={styles.title}>{service.name}</Text>
             <Text style={styles.chip}>{service.category}</Text>
         </View>
-        <Text style={styles.description}>{service.description}</Text>
+        <Text style={styles.description} numberOfLines={2}>{service.description}</Text>
         <View style={styles.footer}>
-            <Text style={styles.price}>${service.price.toFixed(2)}</Text>
-            <Text style={styles.duration}>{service.duration} min</Text>
+            {loading ? (
+                <ActivityIndicator color={Colors.primary} />
+            ) : (
+                <>
+                    <Text style={styles.price}>
+                        S/ {(service.suggestedPrice || 0).toFixed(2)}
+                    </Text>
+                    {service.technician && (
+                        <Text style={styles.technician} numberOfLines={1}>
+                            {service.technician.firstName} {service.technician.lastName}
+                        </Text>
+                    )}
+                </>
+            )}
         </View>
     </TouchableOpacity>
 );
@@ -31,6 +49,9 @@ const styles = StyleSheet.create({
         borderColor: Colors.border,
         marginBottom: 12,
     },
+    cardLoading: {
+        opacity: 0.6,
+    },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -41,6 +62,7 @@ const styles = StyleSheet.create({
         color: Colors.text,
         fontSize: 16,
         fontWeight: '700',
+        flex: 1,
     },
     chip: {
         backgroundColor: Colors.secondary,
@@ -63,11 +85,13 @@ const styles = StyleSheet.create({
     },
     price: {
         color: Colors.accent,
-        fontSize: 16,
+        fontSize: 18,
         fontWeight: '700',
     },
-    duration: {
+    technician: {
         color: Colors.muted,
-        fontSize: 14,
+        fontSize: 12,
+        flex: 1,
+        marginLeft: 8,
     },
 });
