@@ -11,6 +11,7 @@ interface ReservationCardProps {
   onCancel?: (reservation: Reservation) => void;
   onComplete?: (reservation: Reservation) => void;
   showActions?: boolean;
+  displayPrice?: number;
 }
 
 const statusColors: Record<ReservationStatus, string> = {
@@ -28,7 +29,10 @@ export const ReservationCard: React.FC<ReservationCardProps> = ({
   onCancel,
   onComplete,
   showActions = true,
+  displayPrice,
 }) => {
+  const resolvedPrice = displayPrice ?? reservation.finalPrice ?? 0;
+
   return (
     <Card>
       <CardHeader>
@@ -67,7 +71,7 @@ export const ReservationCard: React.FC<ReservationCardProps> = ({
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">Total</span>
             <span className="text-lg font-bold text-primary">
-              S/ {(reservation.finalPrice ?? 0).toFixed(2)}
+              S/ {resolvedPrice.toFixed(2)}
             </span>
           </div>
         </div>

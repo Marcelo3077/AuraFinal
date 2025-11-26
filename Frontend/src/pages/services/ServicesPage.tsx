@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useApi } from '@/hooks';
+import { useApi, useServiceBaseRates } from '@/hooks';
 import { ServiceService } from '@/api';
 import { SERVICE_CATALOG } from '@/data/serviceCatalog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -39,7 +39,9 @@ export const ServicesPage: React.FC = () => {
     }))
   ), []);
 
-  const services = servicesResponse?.content || [];
+  const services = useMemo(() => servicesResponse?.content || [], [servicesResponse]);
+  const serviceIds = useMemo(() => services.map((service) => service.id), [services]);
+  const { rates: baseRates } = useServiceBaseRates(serviceIds);
 
   const catalogServices: CatalogService[] = useMemo(() => {
     const byCategory = new Set(services.map(service => service.category));
@@ -54,8 +56,10 @@ export const ServicesPage: React.FC = () => {
     return matchesSearch && matchesCategory;
   });
 
-  const formatServicePrice = (suggestedPrice: number | null | undefined) => {
-    return Number(suggestedPrice ?? 0).toFixed(2);
+  const formatServicePrice = (service: CatalogService) => {
+    const baseRate = service.id > 0 ? baseRates[service.id] : undefined;
+    const price = baseRate ?? service.suggestedPrice ?? 0;
+    return Number(price).toFixed(2);
   };
 
   const handleOpenService = (service: CatalogService) => {
@@ -168,7 +172,7 @@ export const ServicesPage: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs text-muted-foreground">Starting at</p>
-                    <p className="text-2xl font-bold">S/ {formatServicePrice(service.suggestedPrice)}</p>
+                    <p className="text-2xl font-bold">S/ {formatServicePrice(service)}</p>
                   </div>
                   <Button size="sm" disabled={service.isPlaceholder || service.id < 0}>
                     Book Now

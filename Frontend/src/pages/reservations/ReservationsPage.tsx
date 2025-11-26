@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useApi, usePagination } from '@/hooks';
+import { useApi, usePagination, useTechnicianServiceRates } from '@/hooks';
 import { ReservationService } from '@/api';
-import { ReservationStatus } from '@/types';
+import { Reservation, ReservationStatus } from '@/types';
 import { ReservationCard } from '@/components/features/ReservationCard';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { EmptyState } from '@/components/common/EmptyState';
@@ -38,6 +38,22 @@ export const ReservationsPage: React.FC = () => {
       updatePagination(data);
     }
   }, [data, updatePagination]);
+
+  const reservationsList = useMemo(() => data?.content || [], [data]);
+  const reservationPairs = useMemo(
+    () => reservationsList.map((reservation) => ({
+      technicianId: reservation.technician?.id,
+      serviceId: reservation.service?.id,
+    })),
+    [reservationsList]
+  );
+  const { rates: reservationRates } = useTechnicianServiceRates(reservationPairs);
+
+  const resolvePrice = (reservation: Reservation) => {
+    const priceKey = `${reservation.technician?.id}-${reservation.service?.id}`;
+    const linkRate = reservationRates[priceKey];
+    return reservation.finalPrice ?? linkRate ?? reservation.service?.suggestedPrice ?? 0;
+  };
   
   const handleCancel = async (reservationId: number) => {
     if (confirm('Are you sure you want to cancel this reservation?')) {
@@ -108,6 +124,7 @@ export const ReservationsPage: React.FC = () => {
                   <ReservationCard
                     key={reservation.id}
                     reservation={reservation}
+                    displayPrice={resolvePrice(reservation)}
                     onViewDetails={(r) => navigate(`/reservations/${r.id}`)}
                     onCancel={(r) => handleCancel(r.id)}
                     onComplete={(r) => handleComplete(r.id)}
