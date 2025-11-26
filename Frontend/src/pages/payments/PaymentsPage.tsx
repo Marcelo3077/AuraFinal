@@ -30,6 +30,8 @@ export const PaymentsPage: React.FC = () => {
         return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
       case PaymentStatus.REFUNDED:
         return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+      case PaymentStatus.CANCELLED:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
       default:
         return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
     }
@@ -45,16 +47,16 @@ export const PaymentsPage: React.FC = () => {
     }
   };
 
-  const filteredPayments = payments?.content.filter(payment => 
-    selectedStatus === 'ALL' || payment.status === selectedStatus
+  const filteredPayments = payments?.content.filter(payment =>
+    selectedStatus === 'ALL' || payment.paymentStatus === selectedStatus
   ) || [];
 
   const totalPaid = payments?.content
-    .filter(p => p.status === PaymentStatus.COMPLETED)
+    .filter(p => p.paymentStatus === PaymentStatus.COMPLETED)
     .reduce((sum, p) => sum + p.amount, 0) || 0;
 
   const pendingAmount = payments?.content
-    .filter(p => p.status === PaymentStatus.PENDING)
+    .filter(p => p.paymentStatus === PaymentStatus.PENDING)
     .reduce((sum, p) => sum + p.amount, 0) || 0;
 
   if (loading) {
@@ -84,7 +86,7 @@ export const PaymentsPage: React.FC = () => {
           <CardContent>
             <div className="text-2xl font-bold">S/ {totalPaid.toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">
-              {payments?.content.filter(p => p.status === PaymentStatus.COMPLETED).length || 0} completed payments
+              {payments?.content.filter(p => p.paymentStatus === PaymentStatus.COMPLETED).length || 0} completed payments
             </p>
           </CardContent>
         </Card>
@@ -97,7 +99,7 @@ export const PaymentsPage: React.FC = () => {
           <CardContent>
             <div className="text-2xl font-bold">S/ {pendingAmount.toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">
-              {payments?.content.filter(p => p.status === PaymentStatus.PENDING).length || 0} pending payments
+              {payments?.content.filter(p => p.paymentStatus === PaymentStatus.PENDING).length || 0} pending payments
             </p>
           </CardContent>
         </Card>
@@ -160,40 +162,35 @@ export const PaymentsPage: React.FC = () => {
                   className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent transition-colors"
                 >
                   <div className="flex items-center gap-4 flex-1">
-                    <div className="p-3 rounded-lg bg-primary/10">
-                      {getMethodIcon(payment.method)}
-                    </div>
+                      <div className="p-3 rounded-lg bg-primary/10">
+                        {getMethodIcon(payment.paymentMethod)}
+                      </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <p className="font-medium">
                           {payment.reservation.service.name}
                         </p>
-                        <Badge className={getStatusColor(payment.status)}>
-                          {payment.status}
+                        <Badge className={getStatusColor(payment.paymentStatus)}>
+                          {payment.paymentStatus}
                         </Badge>
                       </div>
                       <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
                         <span className="flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
-                          {format(new Date(payment.createdAt), 'MMM dd, yyyy')}
+                          {format(new Date(payment.paymentDate), 'MMM dd, yyyy')}
                         </span>
-                        <span>Method: {payment.method.replace('_', ' ')}</span>
-                        {payment.transactionId && (
-                          <span>ID: {payment.transactionId}</span>
-                        )}
+                        <span>Method: {payment.paymentMethod.replace('_', ' ')}</span>
                       </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="text-right">
                       <p className="text-lg font-bold">S/ {payment.amount.toFixed(2)}</p>
-                      {payment.paidAt && (
-                        <p className="text-xs text-muted-foreground">
-                          Paid: {format(new Date(payment.paidAt), 'MMM dd, yyyy')}
-                        </p>
-                      )}
+                      <p className="text-xs text-muted-foreground">
+                        Paid: {format(new Date(payment.paymentDate), 'MMM dd, yyyy')}
+                      </p>
                     </div>
-                    {payment.status === PaymentStatus.COMPLETED && (
+                    {payment.paymentStatus === PaymentStatus.COMPLETED && (
                       <Button variant="outline" size="sm">
                         <Download className="h-4 w-4 mr-2" />
                         Receipt

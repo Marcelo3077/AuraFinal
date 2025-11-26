@@ -85,6 +85,14 @@ export const TechnicianReservationsPage: React.FC = () => {
     }
   };
 
+  const resolveReservationTotal = (reservation: any) => {
+    const resolvedTotal = reservation?.finalPrice && reservation.finalPrice > 0
+      ? reservation.finalPrice
+      : reservation?.technicianBaseRate;
+
+    return resolvedTotal ?? reservation?.service?.suggestedPrice ?? 0;
+  };
+
   const getStatusColor = (status: ReservationStatus) => {
     switch (status) {
       case ReservationStatus.PENDING:
@@ -255,7 +263,7 @@ export const TechnicianReservationsPage: React.FC = () => {
                   </div>
                   <div className="text-right">
                     <p className="text-2xl font-bold text-primary">
-                      S/ {(reservation.finalPrice ?? 0).toFixed(2)}
+                      S/ {resolveReservationTotal(reservation).toFixed(2)}
                     </p>
                   </div>
                 </div>

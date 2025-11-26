@@ -1,11 +1,12 @@
-import { useEffect } from 'react';
-import { useAuth, useApi } from '@/hooks';
+import { useEffect, useMemo } from 'react';
+import { useAuth, useApi, useServiceBaseRates, useTechnicianServiceRates } from '@/hooks';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ReservationService, ServiceService } from '@/api';
 import { Calendar, DollarSign, Star, Wrench } from 'lucide-react';
 import { ReservationCard } from '@/components/features/ReservationCard';
 import { useNavigate } from 'react-router-dom';
+import { Reservation } from '@/types';
 
 export const DashboardPage: React.FC = () => {
   const { user } = useAuth();
@@ -24,8 +25,30 @@ export const DashboardPage: React.FC = () => {
     fetchServices();
   }, []);
 
-  const reservationsList = reservations?.content || [];
-  const servicesList = services?.content || [];
+  const reservationsList = useMemo(() => reservations?.content || [], [reservations]);
+  const servicesList = useMemo(() => services?.content || [], [services]);
+  const reservationPairs = reservationsList.map((reservation) => ({
+    technicianId: reservation.technician?.id,
+    serviceId: reservation.service?.id,
+  }));
+  const { rates: technicianServiceRates } = useTechnicianServiceRates(reservationPairs);
+  const serviceIds = useMemo(() => servicesList.map((service) => service.id), [servicesList]);
+  const { rates: serviceBaseRates } = useServiceBaseRates(serviceIds);
+
+  const resolveReservationPrice = (reservation: Reservation) => {
+    const priceKey = `${reservation.technician?.id}-${reservation.service?.id}`;
+    const fallbackRate = technicianServiceRates[priceKey];
+    const reservationTotal =
+      reservation.finalPrice && reservation.finalPrice > 0
+        ? reservation.finalPrice
+        : reservation.technicianBaseRate;
+    return reservationTotal ?? fallbackRate ?? reservation.service?.suggestedPrice ?? 0;
+  };
+
+  const resolveServicePrice = (serviceId: number, suggestedPrice?: number) => {
+    const baseRate = serviceBaseRates[serviceId];
+    return (baseRate ?? suggestedPrice ?? 0).toFixed(2);
+  };
 
   const stats = [
     {
@@ -36,7 +59,7 @@ export const DashboardPage: React.FC = () => {
     },
     {
       title: 'Total Spent',
-      value: `S/ ${reservationsList.reduce((acc, r) => acc + (r.finalPrice || 0), 0).toFixed(2)}`,
+      value: `S/ ${reservationsList.reduce((acc, r) => acc + resolveReservationPrice(r), 0).toFixed(2)}`,
       icon: DollarSign,
       color: 'text-green-500',
     },
@@ -96,21 +119,22 @@ export const DashboardPage: React.FC = () => {
             <CardTitle>Recent Reservations</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {reservationsList.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">
-                No reservations yet. Book a service to get started!
-              </p>
-            ) : (
-              reservationsList.slice(0, 3).map((reservation) => (
-                <ReservationCard
-                  key={reservation.id}
-                  reservation={reservation}
-                  onViewDetails={(r) => navigate(`/reservations/${r.id}`)}
-                  showActions={false}
-                />
-              ))
-            )}
-          </CardContent>
+              {reservationsList.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">
+                  No reservations yet. Book a service to get started!
+                </p>
+              ) : (
+                reservationsList.slice(0, 3).map((reservation) => (
+                  <ReservationCard
+                    key={reservation.id}
+                    reservation={reservation}
+                    displayPrice={resolveReservationPrice(reservation)}
+                    onViewDetails={(r) => navigate(`/reservations/${r.id}`)}
+                    showActions={false}
+                  />
+                ))
+              )}
+            </CardContent>
         </Card>
 
         <Card>
@@ -137,7 +161,7 @@ export const DashboardPage: React.FC = () => {
                     </div>
                   </div>
                   <span className="font-semibold">
-                    S/ {(service.suggestedPrice || 0).toFixed(2)}
+                    S/ {resolveServicePrice(service.id, service.suggestedPrice)}
                   </span>
                 </div>
               ))}

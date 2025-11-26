@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks';
-import { Role } from '@/types';
+import { Role, ServiceCategory } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -64,6 +64,20 @@ export const RegisterPage: React.FC = () => {
     clearError();
 
     try {
+      const specialtyInputs = technicianForm.specialties
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean);
+
+      const specialties = specialtyInputs
+        .map((input) => {
+          const normalized = input
+            .replace(/\s+/g, '_')
+            .toUpperCase();
+          return ServiceCategory[normalized as keyof typeof ServiceCategory];
+        })
+        .filter((category): category is ServiceCategory => Boolean(category));
+
       await register({
         firstName: technicianForm.firstName,
         lastName: technicianForm.lastName,
@@ -71,7 +85,7 @@ export const RegisterPage: React.FC = () => {
         password: technicianForm.password,
         phone: technicianForm.phone,
         description: technicianForm.description,
-        specialties: technicianForm.specialties.split(',').map(s => s.trim())
+        specialties: specialties.length > 0 ? specialties : [ServiceCategory.OTHER]
       }, Role.TECHNICIAN);
       toast.success('Registration successful!');
       navigate('/dashboard');

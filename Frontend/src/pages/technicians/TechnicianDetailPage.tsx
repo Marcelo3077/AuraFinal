@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { TechnicianService, ServiceService } from '@/api';
+import { TechnicianService, ServiceService, TechnicianServiceLinkService } from '@/api';
 import { useApi, useAuth } from '@/hooks';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,6 +18,7 @@ export const TechnicianDetailPage: React.FC = () => {
 
   const initialServiceId = (location.state as { serviceId?: number } | undefined)?.serviceId;
   const [selectedServiceId, setSelectedServiceId] = useState<number | undefined>(initialServiceId);
+  const [serviceRate, setServiceRate] = useState<number | undefined>();
 
   const { data: technician, loading: loadingTechnician, execute: fetchTechnician } = useApi(() =>
     TechnicianService.getById(Number(id))
@@ -38,6 +39,25 @@ export const TechnicianDetailPage: React.FC = () => {
       fetchService();
     }
   }, [selectedServiceId]);
+
+  useEffect(() => {
+    const loadServiceRate = async () => {
+      if (!technician?.id || !selectedServiceId) {
+        setServiceRate(undefined);
+        return;
+      }
+
+      try {
+        const link = await TechnicianServiceLinkService.getById(technician.id, selectedServiceId);
+        setServiceRate(link.baseRate);
+      } catch (error) {
+        console.warn('Unable to load technician service rate', error);
+        setServiceRate(undefined);
+      }
+    };
+
+    loadServiceRate();
+  }, [technician?.id, selectedServiceId]);
 
   useEffect(() => {
     if (!selectedServiceId && technician?.services?.length) {
@@ -148,7 +168,9 @@ export const TechnicianDetailPage: React.FC = () => {
                 <Badge variant="outline">{selectedService.category}</Badge>
               </div>
               <p className="text-sm text-muted-foreground">{selectedService.description}</p>
-              <p className="text-lg font-bold">Starting at S/ {formatPrice(selectedService.suggestedPrice)}</p>
+              <p className="text-lg font-bold">
+                Starting at S/ {formatPrice(serviceRate ?? selectedService.suggestedPrice)}
+              </p>
             </div>
           )}
 

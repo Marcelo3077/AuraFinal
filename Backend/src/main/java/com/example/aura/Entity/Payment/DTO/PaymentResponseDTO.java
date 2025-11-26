@@ -13,7 +13,7 @@ import java.time.LocalDate;
 @AllArgsConstructor
 public class PaymentResponseDTO {
     private Long id;
-    private Long reservationId;
+    private PaymentReservationDTO reservation;
     private Double amount;
     private LocalDate paymentDate;
     private PaymentMethod paymentMethod;

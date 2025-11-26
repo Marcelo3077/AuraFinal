@@ -13,8 +13,11 @@ import java.time.LocalDate;
 public class ReviewResponseDTO {
     private Long id;
     private Long reservationId;
+    private Long userId;
     private String userName;
+    private Long technicianId;
     private String technicianName;
+    private Long serviceId;
     private String serviceName;
     private String comment;
     private Integer rating;

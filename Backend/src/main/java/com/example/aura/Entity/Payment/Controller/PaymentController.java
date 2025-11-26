@@ -6,6 +6,7 @@ import com.example.aura.Entity.Payment.Domain.PaymentStatus;
 import com.example.aura.Entity.Payment.Service.PaymentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -34,6 +35,16 @@ public class PaymentController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/my")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN', 'SUPERADMIN')")
+    public ResponseEntity<Page<PaymentResponseDTO>> getMyPayments(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        Page<PaymentResponseDTO> response = paymentService.getPaymentsForCurrentUser(page, size);
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPERADMIN')")
     public ResponseEntity<List<PaymentResponseDTO>> getAllPayments() {
@@ -43,8 +54,12 @@ public class PaymentController {
 
     @GetMapping("/reservation/{reservationId}")
     @PreAuthorize("hasAnyRole('USER', 'TECHNICIAN', 'ADMIN', 'SUPERADMIN')")
-    public ResponseEntity<List<PaymentResponseDTO>> getPaymentsByReservationId(@PathVariable Long reservationId) {
-        List<PaymentResponseDTO> response = paymentService.getPaymentsByReservationId(reservationId);
+    public ResponseEntity<Page<PaymentResponseDTO>> getPaymentsByReservationId(
+            @PathVariable Long reservationId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        Page<PaymentResponseDTO> response = paymentService.getPaymentsByReservationId(reservationId, page, size);
         return ResponseEntity.ok(response);
     }
 

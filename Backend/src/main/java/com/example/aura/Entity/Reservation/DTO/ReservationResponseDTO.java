@@ -17,6 +17,7 @@ public class ReservationResponseDTO {
     private ReservationParticipantDTO user;
     private ReservationParticipantDTO technician;
     private ReservationServiceDTO service;
+    private Double technicianBaseRate;
     private LocalDate reservationDate;
     private LocalDate serviceDate;
     private LocalTime startTime;

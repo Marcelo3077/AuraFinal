@@ -75,6 +75,13 @@ public class TechnicianServiceService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public List<TechnicianServiceResponseDTO> getTechniciansByServiceId(Long serviceId) {
+        return technicianServiceRepository.findByServiceId(serviceId).stream()
+                .map(this::mapToResponseDTO)
+                .collect(Collectors.toList());
+    }
+
     @Transactional
     public TechnicianServiceResponseDTO updateBaseRate(Long technicianId, Long serviceId, Double newBaseRate) {
         TechnicianServiceId id = new TechnicianServiceId(technicianId, serviceId);

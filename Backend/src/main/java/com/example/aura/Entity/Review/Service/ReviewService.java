@@ -19,6 +19,7 @@ import org.springframework.context.ApplicationEventPublisher;
 
 
 import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -53,6 +54,8 @@ public class ReviewService {
         review.setStatus(ReviewStatus.ACTIVE);
 
         Review savedReview = reviewRepository.save(review);
+        reservation.setReview(savedReview);
+        reservationRepository.save(reservation);
         eventPublisher.publishEvent(new ReviewCreatedEvent(
                 this,
                 savedReview.getId(),
@@ -88,9 +91,33 @@ public class ReviewService {
     }
 
     @Transactional(readOnly = true)
+    public List<ReviewResponseDTO> getReviewsByUserId(Long userId) {
+        return reviewRepository.findByReservation_User_Id(userId).stream()
+                .sorted(Comparator.comparing(Review::getCreatedAt).reversed())
+                .map(this::mapToResponseDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
     public List<ReviewResponseDTO> getReviewsByTechnicianId(Long technicianId) {
-        return reviewRepository.findAll().stream()
-                .filter(r -> r.getReservation().getTechnicianService().getTechnician().getId().equals(technicianId))
+        return reviewRepository.findByReservation_TechnicianService_Technician_Id(technicianId).stream()
+                .sorted(Comparator.comparing(Review::getCreatedAt).reversed())
+                .map(this::mapToResponseDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<ReviewResponseDTO> getReviewsByUserEmail(String email) {
+        return reviewRepository.findByReservation_User_Email(email).stream()
+                .sorted(Comparator.comparing(Review::getCreatedAt).reversed())
+                .map(this::mapToResponseDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<ReviewResponseDTO> getReviewsByTechnicianEmail(String email) {
+        return reviewRepository.findByReservation_TechnicianService_Technician_Email(email).stream()
+                .sorted(Comparator.comparing(Review::getCreatedAt).reversed())
                 .map(this::mapToResponseDTO)
                 .collect(Collectors.toList());
     }
@@ -158,10 +185,13 @@ public class ReviewService {
 
         dto.setId(review.getId());
         dto.setReservationId(review.getReservation().getId());
+        dto.setUserId(review.getReservation().getUser().getId());
         dto.setUserName(review.getReservation().getUser().getFirstName() + " " +
                 review.getReservation().getUser().getLastName());
+        dto.setTechnicianId(review.getReservation().getTechnicianService().getTechnician().getId());
         dto.setTechnicianName(review.getReservation().getTechnicianService().getTechnician().getFirstName() + " " +
                 review.getReservation().getTechnicianService().getTechnician().getLastName());
+        dto.setServiceId(review.getReservation().getTechnicianService().getService().getId());
         dto.setServiceName(review.getReservation().getTechnicianService().getService().getName());
         dto.setComment(review.getComment());
         dto.setRating(review.getRating());

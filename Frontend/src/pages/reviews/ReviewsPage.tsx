@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useApi } from '@/hooks';
+import { useApi, useAuth } from '@/hooks';
 import { ReviewService, ReservationService } from '@/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
@@ -9,6 +9,7 @@ import { Star, Calendar, User } from 'lucide-react';
 import { ReservationStatus } from '@/types';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Dialog,
   DialogContent,
@@ -17,6 +18,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export const ReviewsPage: React.FC = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -24,13 +27,27 @@ export const ReviewsPage: React.FC = () => {
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
   const [hoveredRating, setHoveredRating] = useState(0);
+  const [timeliness, setTimeliness] = useState(5);
+  const [quality, setQuality] = useState(5);
+  const [professionalism, setProfessionalism] = useState(5);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { user, isUser, isTechnician } = useAuth();
 
   const { data: reviews, loading: loadingReviews, execute: fetchReviews } = useApi(
-    () => ReviewService.getMy(0, 50)
+    () => {
+      if (!user?.id) return Promise.resolve({ content: [], totalElements: 0 });
+
+      if (isTechnician) {
+        return ReviewService.getForAuthenticatedTechnician(0, 50);
+      }
+
+      return ReviewService.getMine(0, 50);
+    }
   );
 
   const { data: completedReservations, loading: loadingReservations, execute: fetchCompletedReservations } = useApi(
-    () => ReservationService.getByStatus(ReservationStatus.COMPLETED, 0, 50)
+    () => isUser ? ReservationService.getMy(0, 50) : Promise.resolve({ content: [], totalElements: 0 })
   );
 
   const { loading: submitting, execute: submitReview } = useApi(
@@ -38,17 +55,58 @@ export const ReviewsPage: React.FC = () => {
   );
 
   useEffect(() => {
+    if (!user?.id) return;
     fetchReviews();
-    fetchCompletedReservations();
-  }, []);
+    if (isUser) {
+      fetchCompletedReservations();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, isUser]);
 
-  const reviewedReservationIds = new Set(reviews?.content.map(r => r.reservation.id) || []);
-  
-  const unreviewed = completedReservations?.content.filter(
-    res => !reviewedReservationIds.has(res.id)
-  ) || [];
+  const reviewedReservationIds = new Set(
+    (reviews?.content || [])
+      .map(r => r.reservation?.id || r.reservationId)
+      .filter(Boolean) as number[]
+  );
+
+  const unreviewed = isUser
+    ? completedReservations?.content
+        .filter(res => res.status === ReservationStatus.COMPLETED)
+        .filter(res => res.user?.id === user?.id)
+        .filter(res => !reviewedReservationIds.has(res.id))
+        .filter(res => !res.hasReview)
+        || []
+    : [];
+
+  useEffect(() => {
+    const pendingReservationId = (location.state as { reservationId?: number } | undefined)?.reservationId;
+    if (!pendingReservationId) return;
+
+    const match = unreviewed.find((reservation) => reservation.id === pendingReservationId);
+    if (match) {
+      setSelectedReservation(match);
+      setRating(5);
+      setIsCreateDialogOpen(true);
+      navigate(location.pathname, { replace: true });
+      return;
+    }
+
+    ReservationService.getById(pendingReservationId)
+      .then((reservation) => {
+        if (reservation.user?.id !== user?.id) return;
+        setSelectedReservation(reservation);
+        setRating(5);
+        setIsCreateDialogOpen(true);
+        navigate(location.pathname, { replace: true });
+      })
+      .catch(() => {});
+  }, [location.pathname, location.state, navigate, unreviewed, user]);
 
   const handleSubmitReview = async () => {
+    if (!selectedReservation) {
+      toast.error('Please choose a reservation');
+      return;
+    }
     if (rating === 0) {
       toast.error('Please select a rating');
       return;
@@ -59,18 +117,25 @@ export const ReviewsPage: React.FC = () => {
     }
 
     try {
+      const questionnaireSummary = `Timeliness: ${timeliness}/5 | Quality: ${quality}/5 | Professionalism: ${professionalism}/5`;
+
       await submitReview({
         reservationId: selectedReservation.id,
         rating,
-        comment: comment.trim(),
+        comment: `${questionnaireSummary}. ${comment.trim()}`.trim(),
       });
       toast.success('Review submitted successfully');
       setIsCreateDialogOpen(false);
       setRating(0);
       setComment('');
       setSelectedReservation(null);
+      setTimeliness(5);
+      setQuality(5);
+      setProfessionalism(5);
       fetchReviews();
-      fetchCompletedReservations();
+      if (isUser) {
+        fetchCompletedReservations();
+      }
     } catch (error) {
       toast.error('Failed to submit review');
     }
@@ -96,7 +161,7 @@ export const ReviewsPage: React.FC = () => {
     );
   };
 
-  if (loadingReviews || loadingReservations) {
+  if (loadingReviews || (isUser && loadingReservations)) {
     return (
       <div className="flex items-center justify-center h-96">
         <LoadingSpinner size="lg" />
@@ -110,13 +175,15 @@ export const ReviewsPage: React.FC = () => {
         <div>
           <h1 className="text-3xl font-bold">My Reviews</h1>
           <p className="text-muted-foreground mt-2">
-            Manage your service reviews and ratings
+            {isTechnician
+              ? 'See what customers are saying about your services'
+              : 'Manage your service reviews and ratings'}
           </p>
         </div>
       </div>
 
       {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className={`grid gap-4 ${isUser ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Reviews</CardTitle>
@@ -141,19 +208,21 @@ export const ReviewsPage: React.FC = () => {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Reviews</CardTitle>
-            <Calendar className="h-4 w-4 text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{unreviewed.length}</div>
-          </CardContent>
-        </Card>
+        {isUser && (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Pending Reviews</CardTitle>
+              <Calendar className="h-4 w-4 text-blue-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{unreviewed.length}</div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Pending Reviews */}
-      {unreviewed.length > 0 && (
+      {isUser && unreviewed.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>Pending Reviews</CardTitle>
@@ -190,7 +259,7 @@ export const ReviewsPage: React.FC = () => {
       {/* Submitted Reviews */}
       <Card>
         <CardHeader>
-          <CardTitle>Your Reviews</CardTitle>
+          <CardTitle>{isTechnician ? 'Reviews About You' : 'Your Reviews'}</CardTitle>
         </CardHeader>
         <CardContent>
           {reviews?.content.length === 0 ? (
@@ -212,10 +281,16 @@ export const ReviewsPage: React.FC = () => {
                       </div>
                       <div>
                         <p className="font-medium">
-                          {review.technician.firstName} {review.technician.lastName}
+                          {isTechnician
+                            ? review.user?.firstName
+                              ? `${review.user.firstName} ${review.user.lastName}`
+                              : review.userName || 'Customer'
+                            : review.technician?.firstName
+                              ? `${review.technician.firstName} ${review.technician.lastName}`
+                              : review.technicianName}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          {review.reservation.service.name}
+                          {review.reservation?.service?.name || review.serviceName}
                         </p>
                       </div>
                     </div>
@@ -235,16 +310,56 @@ export const ReviewsPage: React.FC = () => {
       </Card>
 
       {/* Create Review Dialog */}
-      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Write a Review</DialogTitle>
-            <DialogDescription>
-              Share your experience with {selectedReservation?.technician.firstName}
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4 py-4">
+      {isUser && (
+        <Dialog
+          open={isCreateDialogOpen}
+          onOpenChange={(open) => {
+            setIsCreateDialogOpen(open);
+            if (!open) {
+              setSelectedReservation(null);
+              setRating(0);
+              setComment('');
+              setTimeliness(5);
+              setQuality(5);
+              setProfessionalism(5);
+            }
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Write a Review</DialogTitle>
+              <DialogDescription>
+                Share your experience to help other customers
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="reservation">Reservation</Label>
+                <Select
+                  value={selectedReservation?.id?.toString() || ''}
+                  onValueChange={(value) => {
+                    const reservation = unreviewed.find((res) => res.id.toString() === value);
+                    if (reservation) {
+                      setSelectedReservation(reservation);
+                      setRating(0);
+                      setComment('');
+                    }
+                  }}
+                >
+                  <SelectTrigger id="reservation">
+                    <SelectValue placeholder="Select a reservation to review" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {unreviewed.map((reservation) => (
+                      <SelectItem key={reservation.id} value={reservation.id.toString()}>
+                        {reservation.service.name} • {format(new Date(reservation.serviceDate), 'MMM dd, yyyy')}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
             <div className="space-y-2">
               <label className="text-sm font-medium">Rating</label>
               <div className="flex items-center gap-2">
@@ -253,6 +368,41 @@ export const ReviewsPage: React.FC = () => {
                   {rating > 0 ? `${rating}/5` : 'Select rating'}
                 </span>
               </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {[{
+                label: 'Timeliness',
+                value: timeliness,
+                setter: setTimeliness,
+              }, {
+                label: 'Quality',
+                value: quality,
+                setter: setQuality,
+              }, {
+                label: 'Professionalism',
+                value: professionalism,
+                setter: setProfessionalism,
+              }].map((question) => (
+                <div key={question.label} className="space-y-2">
+                  <label className="text-sm font-medium">{question.label}</label>
+                  <Select
+                    value={question.value.toString()}
+                    onValueChange={(value) => question.setter(Number(value))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Rate 1-5" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[5, 4, 3, 2, 1].map((value) => (
+                        <SelectItem key={value} value={value.toString()}>
+                          {value} / 5
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ))}
             </div>
 
             <div className="space-y-2">
@@ -266,24 +416,25 @@ export const ReviewsPage: React.FC = () => {
             </div>
           </div>
 
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsCreateDialogOpen(false);
-                setRating(0);
-                setComment('');
-                setSelectedReservation(null);
-              }}
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleSubmitReview} disabled={submitting}>
-              {submitting ? 'Submitting...' : 'Submit Review'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsCreateDialogOpen(false);
+                  setRating(0);
+                  setComment('');
+                  setSelectedReservation(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleSubmitReview} disabled={submitting || !selectedReservation}>
+                {submitting ? 'Submitting...' : 'Submit Review'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 };

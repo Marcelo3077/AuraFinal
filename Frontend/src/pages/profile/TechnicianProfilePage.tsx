@@ -344,10 +344,10 @@ export const TechnicianProfilePage: React.FC = () => {
                   <div className="flex items-start justify-between mb-2">
                     <div>
                       <p className="font-medium">
-                        {review.user.firstName} {review.user.lastName}
+                        {review.user?.firstName ? `${review.user.firstName} ${review.user.lastName}` : review.userName}
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        {review.reservation.service.name}
+                        {review.reservation?.service?.name || review.serviceName}
                       </p>
                     </div>
                     <div className="flex items-center gap-1">

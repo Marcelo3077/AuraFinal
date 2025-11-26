@@ -16,40 +16,47 @@ export const TechnicianDashboardPage: React.FC = () => {
   const [selectedTab, setSelectedTab] = useState<'pending' | 'confirmed' | 'completed'>('pending');
 
   const { data: allReservations, loading: loadingReservations, execute: fetchReservations } = useApi(
-    () => ReservationService.getAll(0, 100)
+    () => ReservationService.getMyAsTechnician(0, 100)
   );
 
   const { data: reviews, loading: loadingReviews, execute: fetchReviews } = useApi(
-    () => ReviewService.getAll(0, 100)
+    () => ReviewService.getByTechnician(user?.id || 0, 0, 100)
   );
 
   useEffect(() => {
+    if (!user?.id) return;
     fetchReservations();
     fetchReviews();
-  }, []);
+  }, [user?.id]);
 
   // Filtrar reservaciones del técnico actual
-  const myReservations = allReservations?.content?.filter(
-    r => r.technician?.id === user?.id
-  ) || [];
+  const myReservations = allReservations?.content || [];
 
   const pendingReservations = myReservations.filter(r => r.status === ReservationStatus.PENDING);
   const confirmedReservations = myReservations.filter(r => r.status === ReservationStatus.CONFIRMED);
   const completedReservations = myReservations.filter(r => r.status === ReservationStatus.COMPLETED);
   const inProgressReservations = myReservations.filter(r => r.status === ReservationStatus.IN_PROGRESS);
 
+  const resolveReservationTotal = (reservation: any) => {
+    const resolvedTotal = reservation?.finalPrice && reservation.finalPrice > 0
+      ? reservation.finalPrice
+      : reservation?.technicianBaseRate;
+
+    return resolvedTotal ?? 0;
+  };
+
   // Calcular estadísticas
-  const totalEarnings = completedReservations.reduce((sum, r) => sum + (r.finalPrice || 0), 0);
+  const totalEarnings = completedReservations.reduce((sum, r) => sum + resolveReservationTotal(r), 0);
   const monthlyEarnings = completedReservations
     .filter(r => {
       const date = new Date(r.serviceDate);
       const now = new Date();
       return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
     })
-    .reduce((sum, r) => sum + (r.finalPrice || 0), 0);
+    .reduce((sum, r) => sum + resolveReservationTotal(r), 0);
 
   // Calcular rating promedio
-  const myReviews = reviews?.content?.filter(r => r.technician?.id === user?.id) || [];
+  const myReviews = reviews?.content || [];
   const averageRating = myReviews.length > 0
     ? (myReviews.reduce((sum, r) => sum + r.rating, 0) / myReviews.length).toFixed(1)
     : '0.0';
@@ -132,7 +139,7 @@ export const TechnicianDashboardPage: React.FC = () => {
     return (
       <div className="space-y-4">
         {reservations.map((reservation) => {
-          const price = reservation.finalPrice ?? 0;
+          const price = resolveReservationTotal(reservation);
 
           return (
             <div
@@ -368,10 +375,10 @@ export const TechnicianDashboardPage: React.FC = () => {
                   <div className="flex items-start justify-between mb-2">
                     <div>
                       <p className="font-medium">
-                        {review.user.firstName} {review.user.lastName}
+                        {review.user?.firstName ? `${review.user.firstName} ${review.user.lastName}` : review.userName}
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        {review.reservation.service.name}
+                        {review.reservation?.service?.name || review.serviceName}
                       </p>
                     </div>
                     <div className="flex items-center gap-1">

@@ -10,3 +10,4 @@ export * from './tabs';
 export * from './select';
 export * from './textarea';
 export * from './alert';
+export * from './radio-group';

@@ -8,13 +8,16 @@ export enum Role {
 
 export enum ServiceCategory {
   PLUMBING = 'PLUMBING',
-  ELECTRICAL = 'ELECTRICAL',
+  ELECTRICITY = 'ELECTRICITY',
   CARPENTRY = 'CARPENTRY',
   PAINTING = 'PAINTING',
   CLEANING = 'CLEANING',
-  GARDENING = 'GARDENING',
+  APPLIANCE_REPAIR = 'APPLIANCE_REPAIR',
   HVAC = 'HVAC',
-  APPLIANCE_REPAIR = 'APPLIANCE_REPAIR'
+  IT_SUPPORT = 'IT_SUPPORT',
+  LOCKSMITH = 'LOCKSMITH',
+  GENERAL_MAINTENANCE = 'GENERAL_MAINTENANCE',
+  OTHER = 'OTHER'
 }
 
 export enum ReservationStatus {
@@ -30,7 +33,8 @@ export enum PaymentStatus {
   PENDING = 'PENDING',
   COMPLETED = 'COMPLETED',
   REFUNDED = 'REFUNDED',
-  FAILED = 'FAILED'
+  FAILED = 'FAILED',
+  CANCELLED = 'CANCELLED'
 }
 
 export enum PaymentMethod {
@@ -118,6 +122,7 @@ export interface Reservation {
   user: User;
   technician: Technician;
   service: Service;
+  technicianBaseRate?: number;
   serviceDate: string;
   startTime: string;
   address: string;
@@ -128,22 +133,38 @@ export interface Reservation {
   updatedAt: string;
 }
 
+export interface PaymentReservationSummary {
+  id: number;
+  service: Service;
+  status: ReservationStatus;
+  serviceDate: string;
+  startTime?: string;
+  address?: string;
+  technicianBaseRate?: number;
+  finalPrice?: number;
+}
+
 export interface Payment {
   id: number;
-  reservation: Reservation;
+  reservation: PaymentReservationSummary;
   amount: number;
-  method: PaymentMethod;
-  status: PaymentStatus;
-  transactionId?: string;
-  paidAt?: string;
-  createdAt: string;
+  paymentMethod: PaymentMethod;
+  paymentStatus: PaymentStatus;
+  paymentDate: string;
 }
 
 export interface Review {
   id: number;
-  reservation: Reservation;
-  user: User;
-  technician: Technician;
+  reservation?: Reservation;
+  reservationId?: number;
+  user?: User;
+  userId?: number;
+  userName?: string;
+  technician?: Technician;
+  technicianId?: number;
+  technicianName?: string;
+  serviceId?: number;
+  serviceName?: string;
   rating: number;
   comment: string;
   createdAt: string;
@@ -237,7 +258,7 @@ export interface CreateReservationRequest {
 
 export interface CreatePaymentRequest {
   reservationId: number;
-  method: PaymentMethod;
+  paymentMethod: PaymentMethod;
   amount: number;
 }
 

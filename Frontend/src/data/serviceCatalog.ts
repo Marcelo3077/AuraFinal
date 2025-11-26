@@ -17,7 +17,7 @@ export const SERVICE_CATALOG: ServiceCatalogItem[] = [
   {
     name: 'Electrical',
     description: 'Certified electricians for safe installations and repairs',
-    category: ServiceCategory.ELECTRICAL,
+    category: ServiceCategory.ELECTRICITY,
     suggestedPrice: 0,
   },
   {
@@ -41,7 +41,7 @@ export const SERVICE_CATALOG: ServiceCatalogItem[] = [
   {
     name: 'Gardening',
     description: 'Garden maintenance, landscaping, and plant care',
-    category: ServiceCategory.GARDENING,
+    category: ServiceCategory.GENERAL_MAINTENANCE,
     suggestedPrice: 0,
   },
   {
