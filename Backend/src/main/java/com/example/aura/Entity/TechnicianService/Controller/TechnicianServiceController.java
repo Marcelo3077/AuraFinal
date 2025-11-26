@@ -47,6 +47,13 @@ public class TechnicianServiceController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/service/{serviceId}")
+    public ResponseEntity<List<TechnicianServiceResponseDTO>> getTechniciansByServiceId(
+            @PathVariable Long serviceId) {
+        List<TechnicianServiceResponseDTO> response = technicianServiceService.getTechniciansByServiceId(serviceId);
+        return ResponseEntity.ok(response);
+    }
+
     @PatchMapping("/{technicianId}/{serviceId}/base-rate")
     @PreAuthorize("hasAnyRole('TECHNICIAN', 'ADMIN', 'SUPERADMIN')")
     public ResponseEntity<TechnicianServiceResponseDTO> updateBaseRate(
