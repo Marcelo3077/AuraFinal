@@ -53,6 +53,8 @@ public class ReviewService {
         review.setStatus(ReviewStatus.ACTIVE);
 
         Review savedReview = reviewRepository.save(review);
+        reservation.setReview(savedReview);
+        reservationRepository.save(reservation);
         eventPublisher.publishEvent(new ReviewCreatedEvent(
                 this,
                 savedReview.getId(),
