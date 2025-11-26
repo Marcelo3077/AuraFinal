@@ -19,6 +19,7 @@ import org.springframework.context.ApplicationEventPublisher;
 
 
 import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -91,16 +92,32 @@ public class ReviewService {
 
     @Transactional(readOnly = true)
     public List<ReviewResponseDTO> getReviewsByUserId(Long userId) {
-        return reviewRepository.findAll().stream()
-                .filter(r -> r.getReservation().getUser().getId().equals(userId))
+        return reviewRepository.findByReservation_User_Id(userId).stream()
+                .sorted(Comparator.comparing(Review::getCreatedAt).reversed())
                 .map(this::mapToResponseDTO)
                 .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public List<ReviewResponseDTO> getReviewsByTechnicianId(Long technicianId) {
-        return reviewRepository.findAll().stream()
-                .filter(r -> r.getReservation().getTechnicianService().getTechnician().getId().equals(technicianId))
+        return reviewRepository.findByReservation_TechnicianService_Technician_Id(technicianId).stream()
+                .sorted(Comparator.comparing(Review::getCreatedAt).reversed())
+                .map(this::mapToResponseDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<ReviewResponseDTO> getReviewsByUserEmail(String email) {
+        return reviewRepository.findByReservation_User_Email(email).stream()
+                .sorted(Comparator.comparing(Review::getCreatedAt).reversed())
+                .map(this::mapToResponseDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<ReviewResponseDTO> getReviewsByTechnicianEmail(String email) {
+        return reviewRepository.findByReservation_TechnicianService_Technician_Email(email).stream()
+                .sorted(Comparator.comparing(Review::getCreatedAt).reversed())
                 .map(this::mapToResponseDTO)
                 .collect(Collectors.toList());
     }

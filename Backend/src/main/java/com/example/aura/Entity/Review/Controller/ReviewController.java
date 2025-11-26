@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -52,9 +53,23 @@ public class ReviewController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/my")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<List<ReviewResponseDTO>> getReviewsForAuthenticatedUser(Authentication authentication) {
+        List<ReviewResponseDTO> response = reviewService.getReviewsByUserEmail(authentication.getName());
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping("/technician/{technicianId}")
     public ResponseEntity<List<ReviewResponseDTO>> getReviewsByTechnicianId(@PathVariable Long technicianId) {
         List<ReviewResponseDTO> response = reviewService.getReviewsByTechnicianId(technicianId);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/technician/my")
+    @PreAuthorize("hasRole('TECHNICIAN')")
+    public ResponseEntity<List<ReviewResponseDTO>> getReviewsForAuthenticatedTechnician(Authentication authentication) {
+        List<ReviewResponseDTO> response = reviewService.getReviewsByTechnicianEmail(authentication.getName());
         return ResponseEntity.ok(response);
     }
 

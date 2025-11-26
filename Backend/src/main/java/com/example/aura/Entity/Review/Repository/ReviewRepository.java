@@ -11,4 +11,8 @@ import java.util.List;
 public interface ReviewRepository extends JpaRepository<Review, Long> {
     List<Review> findByStatus(ReviewStatus status);
     List<Review> findByRating(Integer rating);
+    List<Review> findByReservation_User_Id(Long userId);
+    List<Review> findByReservation_User_Email(String email);
+    List<Review> findByReservation_TechnicianService_Technician_Id(Long technicianId);
+    List<Review> findByReservation_TechnicianService_Technician_Email(String email);
 }

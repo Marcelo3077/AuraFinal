@@ -39,10 +39,10 @@ export const ReviewsPage: React.FC = () => {
       if (!user?.id) return Promise.resolve({ content: [], totalElements: 0 });
 
       if (isTechnician) {
-        return ReviewService.getByTechnician(user.id, 0, 50);
+        return ReviewService.getForAuthenticatedTechnician(0, 50);
       }
 
-      return ReviewService.getByUser(user.id, 0, 50);
+      return ReviewService.getMine(0, 50);
     }
   );
 
