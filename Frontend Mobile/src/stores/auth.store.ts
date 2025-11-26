@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User, Role } from '@/types';
 
@@ -37,9 +38,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     login: async (user, token) => {
         try {
-            await AsyncStorage.multiSet([
-                [TOKEN_KEY, token],
-                [USER_KEY, JSON.stringify(user)]
+            await Promise.all([
+                SecureStore.setItemAsync(TOKEN_KEY, token),
+                AsyncStorage.setItem(USER_KEY, JSON.stringify(user))
             ]);
             set({
                 user,
@@ -54,7 +55,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     logout: async () => {
         try {
-            await AsyncStorage.multiRemove([TOKEN_KEY, USER_KEY]);
+            await Promise.all([
+                SecureStore.deleteItemAsync(TOKEN_KEY),
+                AsyncStorage.removeItem(USER_KEY)
+            ]);
             set({
                 user: null,
                 token: null,
@@ -68,9 +72,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     loadAuthData: async () => {
         try {
-            const [[, token], [, userData]] = await AsyncStorage.multiGet([
-                TOKEN_KEY,
-                USER_KEY
+            const [token, userData] = await Promise.all([
+                SecureStore.getItemAsync(TOKEN_KEY),
+                AsyncStorage.getItem(USER_KEY)
             ]);
 
             if (token && userData) {
