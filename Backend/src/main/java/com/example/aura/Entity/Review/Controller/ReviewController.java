@@ -45,6 +45,13 @@ public class ReviewController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/user/{userId}")
+    @PreAuthorize("hasAnyRole('USER', 'TECHNICIAN', 'ADMIN', 'SUPERADMIN')")
+    public ResponseEntity<List<ReviewResponseDTO>> getReviewsByUserId(@PathVariable Long userId) {
+        List<ReviewResponseDTO> response = reviewService.getReviewsByUserId(userId);
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping("/technician/{technicianId}")
     public ResponseEntity<List<ReviewResponseDTO>> getReviewsByTechnicianId(@PathVariable Long technicianId) {
         List<ReviewResponseDTO> response = reviewService.getReviewsByTechnicianId(technicianId);

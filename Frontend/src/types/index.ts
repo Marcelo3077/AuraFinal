@@ -155,9 +155,16 @@ export interface Payment {
 
 export interface Review {
   id: number;
-  reservation: Reservation;
-  user: User;
-  technician: Technician;
+  reservation?: Reservation;
+  reservationId?: number;
+  user?: User;
+  userId?: number;
+  userName?: string;
+  technician?: Technician;
+  technicianId?: number;
+  technicianName?: string;
+  serviceId?: number;
+  serviceName?: string;
   rating: number;
   comment: string;
   createdAt: string;

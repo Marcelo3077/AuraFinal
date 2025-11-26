@@ -11,18 +11,18 @@ export const TechnicianEarningsPage: React.FC = () => {
   const { user } = useAuth();
 
   const { data: allReservations, loading, execute: fetchReservations } = useApi(
-    () => ReservationService.getAll(0, 1000)
+    () => ReservationService.getMyAsTechnician(0, 1000)
   );
 
   useEffect(() => {
+    if (!user?.id) return;
     fetchReservations();
-  }, []);
+  }, [user?.id]);
 
   const reservations = allReservations?.content ?? [];
 
   const myCompletedReservations = reservations.filter(
     r =>
-      r?.technician?.id === user?.id &&
       r.status === ReservationStatus.COMPLETED
   );
 

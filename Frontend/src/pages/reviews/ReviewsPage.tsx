@@ -35,11 +35,11 @@ export const ReviewsPage: React.FC = () => {
   const { user } = useAuth();
 
   const { data: reviews, loading: loadingReviews, execute: fetchReviews } = useApi(
-    () => ReviewService.getMy(0, 50)
+    () => user?.id ? ReviewService.getByUser(user.id, 0, 50) : Promise.resolve({ content: [], totalElements: 0 })
   );
 
   const { data: completedReservations, loading: loadingReservations, execute: fetchCompletedReservations } = useApi(
-    () => ReservationService.getByStatus(ReservationStatus.COMPLETED, 0, 50)
+    () => ReservationService.getMy(0, 50)
   );
 
   const { loading: submitting, execute: submitReview } = useApi(
@@ -47,15 +47,19 @@ export const ReviewsPage: React.FC = () => {
   );
 
   useEffect(() => {
+    if (!user?.id) return;
     fetchReviews();
     fetchCompletedReservations();
-  }, []);
+  }, [user?.id]);
 
-  const reviewedReservationIds = new Set(reviews?.content.map(r => r.reservation.id) || []);
+  const reviewedReservationIds = new Set(
+    reviews?.content.map(r => r.reservation?.id || r.reservationId).filter(Boolean) as number[] || []
+  );
 
-  const unreviewed = completedReservations?.content.filter(
-    res => res.user?.id === user?.id && !reviewedReservationIds.has(res.id)
-  ) || [];
+  const unreviewed = completedReservations?.content
+    .filter(res => res.status === ReservationStatus.COMPLETED)
+    .filter(res => res.user?.id === user?.id && !reviewedReservationIds.has(res.id))
+    || [];
 
   useEffect(() => {
     const pendingReservationId = (location.state as { reservationId?: number } | undefined)?.reservationId;
@@ -267,10 +271,12 @@ export const ReviewsPage: React.FC = () => {
                       </div>
                       <div>
                         <p className="font-medium">
-                          {review.technician.firstName} {review.technician.lastName}
+                          {review.technician?.firstName
+                            ? `${review.technician.firstName} ${review.technician.lastName}`
+                            : review.technicianName}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          {review.reservation.service.name}
+                          {review.reservation?.service?.name || review.serviceName}
                         </p>
                       </div>
                     </div>

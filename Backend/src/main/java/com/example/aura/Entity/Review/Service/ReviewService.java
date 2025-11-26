@@ -88,6 +88,14 @@ public class ReviewService {
     }
 
     @Transactional(readOnly = true)
+    public List<ReviewResponseDTO> getReviewsByUserId(Long userId) {
+        return reviewRepository.findAll().stream()
+                .filter(r -> r.getReservation().getUser().getId().equals(userId))
+                .map(this::mapToResponseDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
     public List<ReviewResponseDTO> getReviewsByTechnicianId(Long technicianId) {
         return reviewRepository.findAll().stream()
                 .filter(r -> r.getReservation().getTechnicianService().getTechnician().getId().equals(technicianId))
@@ -158,10 +166,13 @@ public class ReviewService {
 
         dto.setId(review.getId());
         dto.setReservationId(review.getReservation().getId());
+        dto.setUserId(review.getReservation().getUser().getId());
         dto.setUserName(review.getReservation().getUser().getFirstName() + " " +
                 review.getReservation().getUser().getLastName());
+        dto.setTechnicianId(review.getReservation().getTechnicianService().getTechnician().getId());
         dto.setTechnicianName(review.getReservation().getTechnicianService().getTechnician().getFirstName() + " " +
                 review.getReservation().getTechnicianService().getTechnician().getLastName());
+        dto.setServiceId(review.getReservation().getTechnicianService().getService().getId());
         dto.setServiceName(review.getReservation().getTechnicianService().getService().getName());
         dto.setComment(review.getComment());
         dto.setRating(review.getRating());
