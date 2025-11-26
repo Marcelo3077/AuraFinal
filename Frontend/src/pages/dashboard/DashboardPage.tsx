@@ -38,7 +38,11 @@ export const DashboardPage: React.FC = () => {
   const resolveReservationPrice = (reservation: Reservation) => {
     const priceKey = `${reservation.technician?.id}-${reservation.service?.id}`;
     const fallbackRate = technicianServiceRates[priceKey];
-    return reservation.finalPrice ?? fallbackRate ?? reservation.service?.suggestedPrice ?? 0;
+    const reservationTotal =
+      reservation.finalPrice && reservation.finalPrice > 0
+        ? reservation.finalPrice
+        : reservation.technicianBaseRate;
+    return reservationTotal ?? fallbackRate ?? reservation.service?.suggestedPrice ?? 0;
   };
 
   const resolveServicePrice = (serviceId: number, suggestedPrice?: number) => {

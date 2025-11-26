@@ -1,6 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useApi } from '@/hooks';
+import { useApi, useServiceBaseRates } from '@/hooks';
 import { ServiceService, TechnicianService, TechnicianServiceLinkService } from '@/api';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { TechnicianCard } from '@/components/features/TechnicianCard';
@@ -89,7 +89,10 @@ export const ServiceDetailPage: React.FC = () => {
       last: true
     };
   });
-  
+
+  const serviceIds = useMemo(() => (service ? [service.id] : []), [service]);
+  const { rates: baseRates } = useServiceBaseRates(serviceIds);
+
   useEffect(() => {
     if (id) {
       fetchService();
@@ -117,6 +120,7 @@ export const ServiceDetailPage: React.FC = () => {
   }
 
   const formatPrice = (value: number | null | undefined) => Number(value ?? 0).toFixed(2);
+  const startingPrice = service ? baseRates[service.id] ?? service.suggestedPrice : 0;
   
   return (
     <div className="space-y-6">
@@ -146,7 +150,7 @@ export const ServiceDetailPage: React.FC = () => {
             <div className="text-right">
               <p className="text-sm text-muted-foreground">Starting at</p>
               <p className="text-3xl font-bold text-primary">
-                S/ {formatPrice(service.suggestedPrice)}
+                S/ {formatPrice(startingPrice)}
               </p>
             </div>
           </div>

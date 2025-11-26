@@ -121,6 +121,7 @@ export interface Reservation {
   user: User;
   technician: Technician;
   service: Service;
+  technicianBaseRate?: number;
   serviceDate: string;
   startTime: string;
   address: string;
@@ -240,7 +241,7 @@ export interface CreateReservationRequest {
 
 export interface CreatePaymentRequest {
   reservationId: number;
-  method: PaymentMethod;
+  paymentMethod: PaymentMethod;
   amount: number;
 }
 

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApi, usePagination, useTechnicianServiceRates } from '@/hooks';
-import { ReservationService } from '@/api';
-import { Reservation, ReservationStatus } from '@/types';
+import { PaymentService, ReservationService } from '@/api';
+import { PaymentMethod, Reservation, ReservationStatus } from '@/types';
 import { ReservationCard } from '@/components/features/ReservationCard';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { EmptyState } from '@/components/common/EmptyState';
@@ -10,12 +10,36 @@ import { Pagination } from '@/components/common/Pagination';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Calendar } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Button } from '@/components/ui/button';
 
 export const ReservationsPage: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'all' | ReservationStatus>('all');
   
   const { page, size, updatePagination, goToPage } = usePagination(0, 10);
+
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.CASH);
+  const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null);
+  const [paymentAmount, setPaymentAmount] = useState<number>(0);
+
+  const paymentMethods = [
+    { value: PaymentMethod.CASH, label: 'Cash' },
+    { value: PaymentMethod.CREDIT_CARD, label: 'Credit Card' },
+    { value: PaymentMethod.DEBIT_CARD, label: 'Debit Card' },
+    { value: PaymentMethod.YAPE, label: 'Yape' },
+    { value: PaymentMethod.PLIN, label: 'Plin' },
+  ];
   
   const { data, loading, execute } = useApi(
     () => ReservationService.getMy(page, size)
@@ -27,6 +51,11 @@ export const ReservationsPage: React.FC = () => {
 
   const { execute: completeReservation } = useApi(
     (id: number) => ReservationService.complete(id)
+  );
+
+  const { execute: createPayment, loading: creatingPayment } = useApi(
+    (payload: { reservationId: number; amount: number; paymentMethod: PaymentMethod }) =>
+      PaymentService.create(payload)
   );
   
   useEffect(() => {
@@ -52,7 +81,11 @@ export const ReservationsPage: React.FC = () => {
   const resolvePrice = (reservation: Reservation) => {
     const priceKey = `${reservation.technician?.id}-${reservation.service?.id}`;
     const linkRate = reservationRates[priceKey];
-    return reservation.finalPrice ?? linkRate ?? reservation.service?.suggestedPrice ?? 0;
+    const reservationTotal =
+      reservation.finalPrice && reservation.finalPrice > 0
+        ? reservation.finalPrice
+        : reservation.technicianBaseRate;
+    return reservationTotal ?? linkRate ?? reservation.service?.suggestedPrice ?? 0;
   };
   
   const handleCancel = async (reservationId: number) => {
@@ -69,11 +102,40 @@ export const ReservationsPage: React.FC = () => {
 
   const handleComplete = async (reservationId: number) => {
     try {
-      await completeReservation(reservationId);
+      const updatedReservation = await completeReservation(reservationId);
       toast.success('Reservation marked as completed');
       execute();
+
+      const targetReservation =
+        (updatedReservation as Reservation) ||
+        reservationsList.find((reservation) => reservation.id === reservationId) ||
+        null;
+
+      if (targetReservation) {
+        setSelectedReservation(targetReservation);
+        setPaymentAmount(resolvePrice(targetReservation));
+        setPaymentDialogOpen(true);
+      }
     } catch (error: any) {
       const message = error?.response?.data?.message || 'Failed to complete reservation';
+      toast.error(message);
+    }
+  };
+
+  const handleSubmitPayment = async () => {
+    if (!selectedReservation) return;
+
+    try {
+      await createPayment({
+        reservationId: selectedReservation.id,
+        amount: paymentAmount,
+        paymentMethod,
+      });
+      toast.success('Payment recorded successfully');
+      setPaymentDialogOpen(false);
+      navigate('/reviews', { state: { reservationId: selectedReservation.id } });
+    } catch (error: any) {
+      const message = error?.response?.data?.message || 'Failed to record payment';
       toast.error(message);
     }
   };
@@ -145,6 +207,62 @@ export const ReservationsPage: React.FC = () => {
           )}
         </TabsContent>
       </Tabs>
+
+      <Dialog
+        open={paymentDialogOpen}
+        onOpenChange={(open) => {
+          setPaymentDialogOpen(open);
+          if (!open) {
+            setSelectedReservation(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Complete your payment</DialogTitle>
+            <DialogDescription>
+              Confirm the payment method for {selectedReservation?.service.name}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Amount</span>
+              <span className="text-xl font-semibold">S/ {paymentAmount.toFixed(2)}</span>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Select payment method</Label>
+              <RadioGroup
+                value={paymentMethod}
+                onValueChange={(value) => setPaymentMethod(value as PaymentMethod)}
+                className="space-y-2"
+              >
+                {paymentMethods.map((method) => (
+                  <div
+                    key={method.value}
+                    className="flex items-center space-x-3 rounded-md border p-3"
+                  >
+                    <RadioGroupItem value={method.value} id={method.value} />
+                    <Label htmlFor={method.value} className="cursor-pointer">
+                      {method.label}
+                    </Label>
+                  </div>
+                ))}
+              </RadioGroup>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPaymentDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSubmitPayment} disabled={creatingPayment}>
+              {creatingPayment ? 'Processing...' : 'Pay now'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

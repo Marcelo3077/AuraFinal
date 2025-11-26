@@ -301,8 +301,15 @@ public class ReservationService {
                 reservation.getPayments().stream()
                         .mapToDouble(p -> p.getAmount() != null ? p.getAmount() : 0.0)
                         .sum() : 0.0;
-        dto.setFinalPrice(totalAmount);
 
+        Double technicianBaseRate = reservation.getTechnicianService().getBaseRate();
+        dto.setTechnicianBaseRate(technicianBaseRate);
+
+        Double resolvedTotal = (totalAmount != null && totalAmount > 0)
+                ? totalAmount
+                : technicianBaseRate;
+
+        dto.setFinalPrice(resolvedTotal);
         dto.setHasReview(reservation.getReview() != null);
 
         return dto;

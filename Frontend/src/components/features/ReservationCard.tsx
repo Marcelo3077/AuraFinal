@@ -31,7 +31,11 @@ export const ReservationCard: React.FC<ReservationCardProps> = ({
   showActions = true,
   displayPrice,
 }) => {
-  const resolvedPrice = displayPrice ?? reservation.finalPrice ?? 0;
+  const resolvedPrice =
+    displayPrice ??
+    (reservation.finalPrice && reservation.finalPrice > 0
+      ? reservation.finalPrice
+      : reservation.technicianBaseRate ?? 0);
 
   return (
     <Card>

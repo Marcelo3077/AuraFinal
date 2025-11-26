@@ -9,6 +9,7 @@ import { Star, Calendar, User } from 'lucide-react';
 import { ReservationStatus } from '@/types';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Dialog,
   DialogContent,
@@ -24,6 +25,8 @@ export const ReviewsPage: React.FC = () => {
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
   const [hoveredRating, setHoveredRating] = useState(0);
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const { data: reviews, loading: loadingReviews, execute: fetchReviews } = useApi(
     () => ReviewService.getMy(0, 50)
@@ -43,10 +46,22 @@ export const ReviewsPage: React.FC = () => {
   }, []);
 
   const reviewedReservationIds = new Set(reviews?.content.map(r => r.reservation.id) || []);
-  
+
   const unreviewed = completedReservations?.content.filter(
     res => !reviewedReservationIds.has(res.id)
   ) || [];
+
+  useEffect(() => {
+    const pendingReservationId = (location.state as { reservationId?: number } | undefined)?.reservationId;
+    if (!pendingReservationId || unreviewed.length === 0) return;
+
+    const match = unreviewed.find((reservation) => reservation.id === pendingReservationId);
+    if (match) {
+      setSelectedReservation(match);
+      setIsCreateDialogOpen(true);
+      navigate(location.pathname, { replace: true });
+    }
+  }, [location.pathname, location.state, navigate, unreviewed]);
 
   const handleSubmitReview = async () => {
     if (rating === 0) {

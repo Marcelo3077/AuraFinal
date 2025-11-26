@@ -21,7 +21,13 @@ export class PaymentService {
   }
 
   static async create(data: CreatePaymentRequest): Promise<Payment> {
-    return ApiClient.post<Payment>(this.BASE, data);
+    const payload = {
+      reservationId: data.reservationId,
+      amount: data.amount,
+      paymentMethod: data.paymentMethod,
+    };
+
+    return ApiClient.post<Payment>(this.BASE, payload);
   }
 
   static async process(id: number): Promise<Payment> {
