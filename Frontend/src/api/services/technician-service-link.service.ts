@@ -24,6 +24,13 @@ export class TechnicianServiceLinkService {
     return response.content ?? [];
   }
 
+  static async getById(
+    technicianId: number,
+    serviceId: number
+  ): Promise<TechnicianServiceLink> {
+    return ApiClient.get<TechnicianServiceLink>(`${this.BASE}/${technicianId}/${serviceId}`);
+  }
+
   static async getByService(serviceId: number): Promise<TechnicianServiceLink[]> {
     const response = await ApiClient.get<
       PaginatedResponse<TechnicianServiceLink> | TechnicianServiceLink[]
