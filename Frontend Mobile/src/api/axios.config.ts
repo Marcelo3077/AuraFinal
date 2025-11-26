@@ -1,4 +1,5 @@
 import axios, { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
+import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '@/constants/config';
 
@@ -17,7 +18,7 @@ export const api = axios.create({
 api.interceptors.request.use(
     async (config: InternalAxiosRequestConfig) => {
         try {
-            const token = await AsyncStorage.getItem(TOKEN_KEY);
+            const token = await SecureStore.getItemAsync(TOKEN_KEY);
 
             if (token && config.headers) {
                 config.headers.Authorization = `Bearer ${token}`;
@@ -48,7 +49,10 @@ api.interceptors.response.use(
 
             try {
                 // Clear auth data
-                await AsyncStorage.multiRemove([TOKEN_KEY, '@aura_user']);
+                await Promise.all([
+                    SecureStore.deleteItemAsync(TOKEN_KEY),
+                    AsyncStorage.removeItem('@aura_user')
+                ]);
 
                 // Optionally redirect to login
                 // You can use a navigation service here
