@@ -18,6 +18,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export const ReviewsPage: React.FC = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -64,6 +66,10 @@ export const ReviewsPage: React.FC = () => {
   }, [location.pathname, location.state, navigate, unreviewed]);
 
   const handleSubmitReview = async () => {
+    if (!selectedReservation) {
+      toast.error('Please choose a reservation');
+      return;
+    }
     if (rating === 0) {
       toast.error('Please select a rating');
       return;
@@ -128,6 +134,19 @@ export const ReviewsPage: React.FC = () => {
             Manage your service reviews and ratings
           </p>
         </div>
+        <Button
+          onClick={() => {
+            if (unreviewed.length === 0) {
+              toast.info('No completed reservations pending review');
+              return;
+            }
+
+            setSelectedReservation(unreviewed[0]);
+            setIsCreateDialogOpen(true);
+          }}
+        >
+          Leave a Review
+        </Button>
       </div>
 
       {/* Stats */}
@@ -250,16 +269,52 @@ export const ReviewsPage: React.FC = () => {
       </Card>
 
       {/* Create Review Dialog */}
-      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+      <Dialog
+        open={isCreateDialogOpen}
+        onOpenChange={(open) => {
+          setIsCreateDialogOpen(open);
+          if (!open) {
+            setSelectedReservation(null);
+            setRating(0);
+            setComment('');
+          }
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Write a Review</DialogTitle>
             <DialogDescription>
-              Share your experience with {selectedReservation?.technician.firstName}
+              Share your experience to help other customers
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="reservation">Reservation</Label>
+              <Select
+                value={selectedReservation?.id?.toString() || ''}
+                onValueChange={(value) => {
+                  const reservation = unreviewed.find((res) => res.id.toString() === value);
+                  if (reservation) {
+                    setSelectedReservation(reservation);
+                    setRating(0);
+                    setComment('');
+                  }
+                }}
+              >
+                <SelectTrigger id="reservation">
+                  <SelectValue placeholder="Select a reservation to review" />
+                </SelectTrigger>
+                <SelectContent>
+                  {unreviewed.map((reservation) => (
+                    <SelectItem key={reservation.id} value={reservation.id.toString()}>
+                      {reservation.service.name} • {format(new Date(reservation.serviceDate), 'MMM dd, yyyy')}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="space-y-2">
               <label className="text-sm font-medium">Rating</label>
               <div className="flex items-center gap-2">
@@ -293,7 +348,7 @@ export const ReviewsPage: React.FC = () => {
             >
               Cancel
             </Button>
-            <Button onClick={handleSubmitReview} disabled={submitting}>
+            <Button onClick={handleSubmitReview} disabled={submitting || !selectedReservation}>
               {submitting ? 'Submitting...' : 'Submit Review'}
             </Button>
           </DialogFooter>

@@ -38,15 +38,23 @@ export const TechnicianDashboardPage: React.FC = () => {
   const completedReservations = myReservations.filter(r => r.status === ReservationStatus.COMPLETED);
   const inProgressReservations = myReservations.filter(r => r.status === ReservationStatus.IN_PROGRESS);
 
+  const resolveReservationTotal = (reservation: any) => {
+    const resolvedTotal = reservation?.finalPrice && reservation.finalPrice > 0
+      ? reservation.finalPrice
+      : reservation?.technicianBaseRate;
+
+    return resolvedTotal ?? 0;
+  };
+
   // Calcular estadísticas
-  const totalEarnings = completedReservations.reduce((sum, r) => sum + (r.finalPrice || 0), 0);
+  const totalEarnings = completedReservations.reduce((sum, r) => sum + resolveReservationTotal(r), 0);
   const monthlyEarnings = completedReservations
     .filter(r => {
       const date = new Date(r.serviceDate);
       const now = new Date();
       return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
     })
-    .reduce((sum, r) => sum + (r.finalPrice || 0), 0);
+    .reduce((sum, r) => sum + resolveReservationTotal(r), 0);
 
   // Calcular rating promedio
   const myReviews = reviews?.content?.filter(r => r.technician?.id === user?.id) || [];
@@ -132,7 +140,7 @@ export const TechnicianDashboardPage: React.FC = () => {
     return (
       <div className="space-y-4">
         {reservations.map((reservation) => {
-          const price = reservation.finalPrice ?? 0;
+          const price = resolveReservationTotal(reservation);
 
           return (
             <div

@@ -32,6 +32,14 @@ export const TechnicianEarningsPage: React.FC = () => {
   const yearStart = startOfYear(now);
   const yearEnd = endOfYear(now);
 
+  const resolveReservationTotal = (reservation: any) => {
+    const resolvedTotal = reservation?.finalPrice && reservation.finalPrice > 0
+      ? reservation.finalPrice
+      : reservation?.technicianBaseRate;
+
+    return resolvedTotal ?? 0;
+  };
+
   const monthReservations = myCompletedReservations.filter(r => {
     const date = new Date(r.serviceDate);
     return date >= monthStart && date <= monthEnd;
@@ -43,11 +51,11 @@ export const TechnicianEarningsPage: React.FC = () => {
   });
 
   const totalEarnings = myCompletedReservations.reduce(
-    (sum, r) => sum + (r.finalPrice ?? 0),
+    (sum, r) => sum + resolveReservationTotal(r),
     0
   );
-  const monthlyEarnings = monthReservations.reduce((sum, r) => sum + (r.finalPrice ?? 0), 0);
-  const yearlyEarnings = yearReservations.reduce((sum, r) => sum + (r.finalPrice ?? 0), 0);
+  const monthlyEarnings = monthReservations.reduce((sum, r) => sum + resolveReservationTotal(r), 0);
+  const yearlyEarnings = yearReservations.reduce((sum, r) => sum + resolveReservationTotal(r), 0);
 
   const averagePerJob = myCompletedReservations.length > 0
     ? totalEarnings / myCompletedReservations.length
@@ -93,7 +101,7 @@ export const TechnicianEarningsPage: React.FC = () => {
     if (!acc[month]) {
       acc[month] = { total: 0, count: 0 };
     }
-    acc[month].total += reservation.finalPrice ?? 0;
+    acc[month].total += resolveReservationTotal(reservation);
     acc[month].count += 1;
     return acc;
   }, {} as Record<string, { total: number; count: number }>);
