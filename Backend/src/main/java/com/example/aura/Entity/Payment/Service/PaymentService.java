@@ -1,17 +1,23 @@
 package com.example.aura.Entity.Payment.Service;
 
+import com.example.aura.Entity.Payment.DTO.PaymentReservationDTO;
 import com.example.aura.Entity.Payment.DTO.PaymentRequestDTO;
 import com.example.aura.Entity.Payment.DTO.PaymentResponseDTO;
 import com.example.aura.Entity.Payment.Domain.Payment;
 import com.example.aura.Entity.Payment.Domain.PaymentStatus;
 import com.example.aura.Entity.Payment.Repository.PaymentRepository;
+import com.example.aura.Entity.Reservation.DTO.ReservationServiceDTO;
 import com.example.aura.Entity.Reservation.Domain.Reservation;
 import com.example.aura.Entity.Reservation.Repository.ReservationRepository;
+import com.example.aura.Entity.User.Domain.User;
+import com.example.aura.Entity.User.Repository.UserRepository;
 import com.example.aura.Event.Payment.PaymentCompletedEvent;
 import com.example.aura.Exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
-import org.modelmapper.ModelMapper;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,7 +31,7 @@ public class PaymentService {
 
     private final PaymentRepository paymentRepository;
     private final ReservationRepository reservationRepository;
-    private final ModelMapper modelMapper;
+    private final UserRepository userRepository;
     private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
@@ -38,9 +44,17 @@ public class PaymentService {
         payment.setAmount(requestDTO.getAmount());
         payment.setPaymentDate(LocalDate.now());
         payment.setPaymentMethod(requestDTO.getPaymentMethod());
-        payment.setPaymentStatus(PaymentStatus.PENDING);
+        payment.setPaymentStatus(PaymentStatus.COMPLETED);
 
         Payment savedPayment = paymentRepository.save(payment);
+        eventPublisher.publishEvent(new PaymentCompletedEvent(
+                this,
+                savedPayment.getId(),
+                savedPayment.getReservation().getId(),
+                savedPayment.getReservation().getUser().getEmail(),
+                savedPayment.getAmount(),
+                savedPayment.getPaymentMethod().toString()
+        ));
         return mapToResponseDTO(savedPayment);
     }
 
@@ -59,17 +73,30 @@ public class PaymentService {
     }
 
     @Transactional(readOnly = true)
-    public List<PaymentResponseDTO> getPaymentsByReservationId(Long reservationId) {
-        return paymentRepository.findAll().stream()
-                .filter(p -> p.getReservation().getId().equals(reservationId))
-                .map(this::mapToResponseDTO)
-                .collect(Collectors.toList());
+    public Page<PaymentResponseDTO> getPaymentsForCurrentUser(int page, int size) {
+        String authenticatedEmail = org.springframework.security.core.context.SecurityContextHolder
+                .getContext()
+                .getAuthentication()
+                .getName();
+
+        User user = userRepository.findByEmail(authenticatedEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "email", authenticatedEmail));
+
+        Pageable pageable = PageRequest.of(page, size);
+        return paymentRepository.findByReservationUserId(user.getId(), pageable)
+                .map(this::mapToResponseDTO);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<PaymentResponseDTO> getPaymentsByReservationId(Long reservationId, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return paymentRepository.findByReservationId(reservationId, pageable)
+                .map(this::mapToResponseDTO);
     }
 
     @Transactional(readOnly = true)
     public List<PaymentResponseDTO> getPaymentsByStatus(PaymentStatus status) {
-        return paymentRepository.findAll().stream()
-                .filter(p -> p.getPaymentStatus() == status)
+        return paymentRepository.findByPaymentStatus(status).stream()
                 .map(this::mapToResponseDTO)
                 .collect(Collectors.toList());
     }
@@ -136,8 +163,46 @@ public class PaymentService {
     }
 
     private PaymentResponseDTO mapToResponseDTO(Payment payment) {
-        PaymentResponseDTO dto = modelMapper.map(payment, PaymentResponseDTO.class);
-        dto.setReservationId(payment.getReservation().getId());
-        return dto;
+        Reservation reservation = payment.getReservation();
+
+        Double totalAmount = reservation.getPayments() != null ?
+                reservation.getPayments().stream()
+                        .mapToDouble(p -> p.getAmount() != null ? p.getAmount() : 0.0)
+                        .sum() : 0.0;
+
+        if ((totalAmount == null || totalAmount == 0.0) && payment.getAmount() != null) {
+            totalAmount = payment.getAmount();
+        }
+
+        Double technicianBaseRate = reservation.getTechnicianService().getBaseRate();
+        Double resolvedTotal = (totalAmount != null && totalAmount > 0)
+                ? totalAmount
+                : technicianBaseRate;
+
+        PaymentReservationDTO reservationDTO = new PaymentReservationDTO(
+                reservation.getId(),
+                new ReservationServiceDTO(
+                        reservation.getTechnicianService().getService().getId(),
+                        reservation.getTechnicianService().getService().getName(),
+                        reservation.getTechnicianService().getService().getDescription(),
+                        reservation.getTechnicianService().getService().getCategory(),
+                        reservation.getTechnicianService().getService().getSuggestedPrice()
+                ),
+                reservation.getStatus(),
+                reservation.getServiceDate(),
+                reservation.getStartTime(),
+                reservation.getAddress(),
+                technicianBaseRate,
+                resolvedTotal
+        );
+
+        return new PaymentResponseDTO(
+                payment.getId(),
+                reservationDTO,
+                payment.getAmount(),
+                payment.getPaymentDate(),
+                payment.getPaymentMethod(),
+                payment.getPaymentStatus()
+        );
     }
 }

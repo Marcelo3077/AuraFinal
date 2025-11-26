@@ -33,7 +33,8 @@ export enum PaymentStatus {
   PENDING = 'PENDING',
   COMPLETED = 'COMPLETED',
   REFUNDED = 'REFUNDED',
-  FAILED = 'FAILED'
+  FAILED = 'FAILED',
+  CANCELLED = 'CANCELLED'
 }
 
 export enum PaymentMethod {
@@ -132,15 +133,24 @@ export interface Reservation {
   updatedAt: string;
 }
 
+export interface PaymentReservationSummary {
+  id: number;
+  service: Service;
+  status: ReservationStatus;
+  serviceDate: string;
+  startTime?: string;
+  address?: string;
+  technicianBaseRate?: number;
+  finalPrice?: number;
+}
+
 export interface Payment {
   id: number;
-  reservation: Reservation;
+  reservation: PaymentReservationSummary;
   amount: number;
-  method: PaymentMethod;
-  status: PaymentStatus;
-  transactionId?: string;
-  paidAt?: string;
-  createdAt: string;
+  paymentMethod: PaymentMethod;
+  paymentStatus: PaymentStatus;
+  paymentDate: string;
 }
 
 export interface Review {

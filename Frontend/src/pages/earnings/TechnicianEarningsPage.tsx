@@ -110,6 +110,8 @@ export const TechnicianEarningsPage: React.FC = () => {
     .sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime())
     .slice(-6); // Últimos 6 meses
 
+  const formatReservationTotal = (reservation: any) => resolveReservationTotal(reservation).toFixed(2);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -203,7 +205,7 @@ export const TechnicianEarningsPage: React.FC = () => {
                 </div>
                 <div className="text-right">
                   <p className="text-lg font-bold text-green-600">
-                    S/ {(reservation.finalPrice ?? 0).toFixed(2)}
+                    S/ {formatReservationTotal(reservation)}
                   </p>
                 </div>
               </div>

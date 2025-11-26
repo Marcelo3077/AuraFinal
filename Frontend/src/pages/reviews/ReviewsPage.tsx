@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useApi } from '@/hooks';
+import { useApi, useAuth } from '@/hooks';
 import { ReviewService, ReservationService } from '@/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
@@ -27,8 +27,12 @@ export const ReviewsPage: React.FC = () => {
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
   const [hoveredRating, setHoveredRating] = useState(0);
+  const [timeliness, setTimeliness] = useState(5);
+  const [quality, setQuality] = useState(5);
+  const [professionalism, setProfessionalism] = useState(5);
   const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const { data: reviews, loading: loadingReviews, execute: fetchReviews } = useApi(
     () => ReviewService.getMy(0, 50)
@@ -50,20 +54,32 @@ export const ReviewsPage: React.FC = () => {
   const reviewedReservationIds = new Set(reviews?.content.map(r => r.reservation.id) || []);
 
   const unreviewed = completedReservations?.content.filter(
-    res => !reviewedReservationIds.has(res.id)
+    res => res.user?.id === user?.id && !reviewedReservationIds.has(res.id)
   ) || [];
 
   useEffect(() => {
     const pendingReservationId = (location.state as { reservationId?: number } | undefined)?.reservationId;
-    if (!pendingReservationId || unreviewed.length === 0) return;
+    if (!pendingReservationId) return;
 
     const match = unreviewed.find((reservation) => reservation.id === pendingReservationId);
     if (match) {
       setSelectedReservation(match);
+      setRating(5);
       setIsCreateDialogOpen(true);
       navigate(location.pathname, { replace: true });
+      return;
     }
-  }, [location.pathname, location.state, navigate, unreviewed]);
+
+    ReservationService.getById(pendingReservationId)
+      .then((reservation) => {
+        if (reservation.user?.id !== user?.id) return;
+        setSelectedReservation(reservation);
+        setRating(5);
+        setIsCreateDialogOpen(true);
+        navigate(location.pathname, { replace: true });
+      })
+      .catch(() => {});
+  }, [location.pathname, location.state, navigate, unreviewed, user]);
 
   const handleSubmitReview = async () => {
     if (!selectedReservation) {
@@ -80,16 +96,21 @@ export const ReviewsPage: React.FC = () => {
     }
 
     try {
+      const questionnaireSummary = `Timeliness: ${timeliness}/5 | Quality: ${quality}/5 | Professionalism: ${professionalism}/5`;
+
       await submitReview({
         reservationId: selectedReservation.id,
         rating,
-        comment: comment.trim(),
+        comment: `${questionnaireSummary}. ${comment.trim()}`.trim(),
       });
       toast.success('Review submitted successfully');
       setIsCreateDialogOpen(false);
       setRating(0);
       setComment('');
       setSelectedReservation(null);
+      setTimeliness(5);
+      setQuality(5);
+      setProfessionalism(5);
       fetchReviews();
       fetchCompletedReservations();
     } catch (error) {
@@ -277,6 +298,9 @@ export const ReviewsPage: React.FC = () => {
             setSelectedReservation(null);
             setRating(0);
             setComment('');
+            setTimeliness(5);
+            setQuality(5);
+            setProfessionalism(5);
           }
         }}
       >
@@ -315,20 +339,55 @@ export const ReviewsPage: React.FC = () => {
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Rating</label>
-              <div className="flex items-center gap-2">
-                {renderStars(rating, true)}
-                <span className="text-sm text-muted-foreground ml-2">
-                  {rating > 0 ? `${rating}/5` : 'Select rating'}
-                </span>
-              </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Rating</label>
+            <div className="flex items-center gap-2">
+              {renderStars(rating, true)}
+              <span className="text-sm text-muted-foreground ml-2">
+                {rating > 0 ? `${rating}/5` : 'Select rating'}
+              </span>
             </div>
+          </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Comment</label>
-              <Textarea
-                placeholder="Share your experience..."
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[{
+              label: 'Timeliness',
+              value: timeliness,
+              setter: setTimeliness,
+            }, {
+              label: 'Quality',
+              value: quality,
+              setter: setQuality,
+            }, {
+              label: 'Professionalism',
+              value: professionalism,
+              setter: setProfessionalism,
+            }].map((question) => (
+              <div key={question.label} className="space-y-2">
+                <label className="text-sm font-medium">{question.label}</label>
+                <Select
+                  value={question.value.toString()}
+                  onValueChange={(value) => question.setter(Number(value))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Rate 1-5" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[5, 4, 3, 2, 1].map((value) => (
+                      <SelectItem key={value} value={value.toString()}>
+                        {value} / 5
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ))}
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Comment</label>
+            <Textarea
+              placeholder="Share your experience..."
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
                 rows={4}

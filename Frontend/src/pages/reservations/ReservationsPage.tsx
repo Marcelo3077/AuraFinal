@@ -132,6 +132,7 @@ export const ReservationsPage: React.FC = () => {
         paymentMethod,
       });
       toast.success('Payment recorded successfully');
+      execute();
       setPaymentDialogOpen(false);
       navigate('/reviews', { state: { reservationId: selectedReservation.id } });
     } catch (error: any) {
